@@ -2,7 +2,7 @@ const pool = require("../config/db");
 
 const LoanModel = {
   // =========================
-  // CREATE LOAN (PINJAM BUKU)
+  // CREATE LOAN (BORROW BOOK)
   // =========================
   async createLoan(member_id, book_id) {
     const client = await pool.connect();
@@ -10,7 +10,7 @@ const LoanModel = {
     try {
       await client.query("BEGIN");
 
-      // 1. Cek stok buku
+      // 1. cek buku
       const bookRes = await client.query(
         "SELECT available_copies FROM books WHERE id = $1",
         [book_id]
@@ -24,7 +24,7 @@ const LoanModel = {
         throw new Error("Stok buku habis");
       }
 
-      // 2. Insert loan
+      // 2. insert loan
       const loanRes = await client.query(
         `INSERT INTO loans (member_id, book_id, status, loan_date)
          VALUES ($1, $2, 'BORROWED', CURRENT_DATE)
@@ -32,7 +32,7 @@ const LoanModel = {
         [member_id, book_id]
       );
 
-      // 3. Kurangi stok buku
+      // 3. update stok
       await client.query(
         `UPDATE books 
          SET available_copies = available_copies - 1
@@ -43,16 +43,18 @@ const LoanModel = {
       await client.query("COMMIT");
 
       return loanRes.rows[0];
+
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
+
     } finally {
       client.release();
     }
   },
 
   // =========================
-  // RETURN LOAN (KEMBALIKAN BUKU)
+  // RETURN BOOK
   // =========================
   async returnLoan(loan_id) {
     const client = await pool.connect();
@@ -60,7 +62,7 @@ const LoanModel = {
     try {
       await client.query("BEGIN");
 
-      // 1. Ambil data loan
+      // 1. get loan
       const loanRes = await client.query(
         "SELECT * FROM loans WHERE id = $1",
         [loan_id]
@@ -72,11 +74,12 @@ const LoanModel = {
 
       const loan = loanRes.rows[0];
 
-      if (loan.status === "RETURNED") {
-        throw new Error("Buku sudah dikembalikan");
+      // 2. prevent double return
+      if (loan.status !== "BORROWED") {
+        throw new Error("Buku sudah dikembalikan atau status tidak valid");
       }
 
-      // 2. Update loan jadi returned
+      // 3. update loan
       await client.query(
         `UPDATE loans 
          SET status = 'RETURNED', return_date = CURRENT_DATE
@@ -84,7 +87,7 @@ const LoanModel = {
         [loan_id]
       );
 
-      // 3. Tambah stok buku
+      // 4. update book stock
       await client.query(
         `UPDATE books 
          SET available_copies = available_copies + 1
@@ -94,11 +97,14 @@ const LoanModel = {
 
       await client.query("COMMIT");
 
-      return { message: "Buku berhasil dikembalikan" };
+      return {
+        message: "Buku berhasil dikembalikan"
+      };
 
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
+
     } finally {
       client.release();
     }
@@ -120,7 +126,7 @@ const LoanModel = {
   },
 
   // =========================
-  // GET LOAN BY ID
+  // GET BY ID
   // =========================
   async getLoanById(id) {
     const result = await pool.query(
