@@ -1,12 +1,12 @@
-import express from "express";
-import { returnLoan } from "../controllers/loanController.js";
+import express from 'express';
+import { LoanController } from '../controllers/loanController.js';
 
 const router = express.Router();
 
-/**
- * PUT /api/loans/return/:loan_id
- * Untuk mengembalikan buku (RETURNED)
- */
-router.put("/return/:loan_id", returnLoan);
+router.get('/', LoanController.getLoans);
+router.post('/', LoanController.createLoan);
+
+// 🔥 RETURN BOOK (lebih proper)
+router.put('/:id/return', LoanController.returnBook);
 
 export default router;

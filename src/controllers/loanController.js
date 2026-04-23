@@ -1,25 +1,45 @@
-import LoanModel from "../models/loanModel.js";
+import { LoanModel } from '../models/loanModel.js';
 
-// =========================
-// RETURN LOAN CONTROLLER
-// =========================
-export const returnLoan = async (req, res) => {
-  try {
-    const { loan_id } = req.params;
+export const LoanController = {
 
-    if (!loan_id) {
-      return res.status(400).json({
-        error: "loan_id wajib diisi"
+  // CREATE LOAN
+  async createLoan(req, res) {
+    const { book_id, member_id, due_date } = req.body;
+
+    try {
+      const loan = await LoanModel.createLoan(book_id, member_id, due_date);
+      res.status(201).json({
+        message: "Peminjaman berhasil dicatat!",
+        data: loan
       });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
     }
+  },
 
-    const result = await LoanModel.returnLoan(loan_id);
+  // GET ALL LOANS
+  async getLoans(req, res) {
+    try {
+      const loans = await LoanModel.getAllLoans();
+      res.json(loans);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
 
-    return res.status(200).json(result);
+  // RETURN BOOK (RESTFUL VERSION)
+  async returnBook(req, res) {
+    const { id } = req.params;
 
-  } catch (err) {
-    return res.status(400).json({
-      error: err.message
-    });
+    try {
+      const loan = await LoanModel.returnBook(id);
+      res.json({
+        message: "Buku berhasil dikembalikan!",
+        data: loan
+      });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   }
+
 };
